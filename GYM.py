@@ -42,3 +42,29 @@ def true_growth_function(muscle, weekly_time, sessions_per_week, intensity_pct, 
  
     growth = (base_growth - overtraining_penalty) * freq_factor * intensity_factor * age_factor
     return np.maximum(growth, 0)
+
+def simulate_dataset(n_samples_per_muscle=300):
+    rows = []
+    for muscle in MUSCLES:
+        weekly_time = rng.uniform(10, 200, n_samples_per_muscle)
+        sessions = rng.integers(1, 6, n_samples_per_muscle)      
+        intensity = rng.uniform(55, 95, n_samples_per_muscle)     
+        training_age = rng.uniform(0, 15, n_samples_per_muscle)        
+ 
+        expected_growth = true_growth_function(muscle, weekly_time, sessions, intensity, training_age)
+ 
+        noise = rng.normal(0, 0.15 * expected_growth + 0.15, n_samples_per_muscle)
+        observed_growth = np.maximum(expected_growth + noise, 0)
+ 
+        for i in range(n_samples_per_muscle):
+            rows.append({
+                "muscle_group": muscle,
+                "weekly_training_time_min": round(weekly_time[i], 1),
+                "sessions_per_week": int(sessions[i]),
+                "avg_intensity_pct_1rm": round(intensity[i], 1),
+                "training_age_years": round(training_age[i], 1),
+                "muscle_growth_pct_8wk": round(observed_growth[i], 3),
+            })
+ 
+    return pd.DataFrame(rows)
+ 
