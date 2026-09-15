@@ -138,8 +138,15 @@ plt.tight_layout()
 plt.savefig("muscle_growth_vs_time.png", dpi=150)
 print("\nSaved plot to muscle_growth_vs_time.png")
 
- 
-df.to_csv("simulated_training_data.csv", index=False)
-joblib.dump(model, "muscle_growth_model.joblib")
-print("Saved dataset to simulated_training_data.csv")
-print("Saved trained model to muscle_growth_model.joblib")
+
+
+my_input = pd.DataFrame({
+    "muscle_group": ["Chest"],               
+    "weekly_training_time_min": [60],         
+    "sessions_per_week": [3],
+    "avg_intensity_pct_1rm": [75],
+    "training_age_years": [2],
+})
+
+predicted_growth = model.predict(my_input)
+print(f"Predicted growth: {predicted_growth[0]:.2f}%")
