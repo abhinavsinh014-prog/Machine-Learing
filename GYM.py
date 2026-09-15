@@ -67,4 +67,32 @@ def simulate_dataset(n_samples_per_muscle=300):
             })
  
     return pd.DataFrame(rows)
+
  
+print("Simulating training dataset...")
+df = simulate_dataset(n_samples_per_muscle=300)
+print(f"Dataset shape: {df.shape}")
+print(df.head())
+print()
+
+feature_cols = ["muscle_group", "weekly_training_time_min", "sessions_per_week",
+                 "avg_intensity_pct_1rm", "training_age_years"]
+target_col = "muscle_growth_pct_8wk"
+ 
+X = df[feature_cols]
+y = df[target_col]
+ 
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=RANDOM_SEED)
+ 
+preprocessor = ColumnTransformer(
+    transformers=[("muscle_ohe", OneHotEncoder(handle_unknown="ignore"), ["muscle_group"])],
+    remainder="passthrough",
+)
+ 
+model = Pipeline(steps=[
+    ("preprocess", preprocessor),
+    ("regressor", RandomForestRegressor(n_estimators=300, max_depth=10, random_state=RANDOM_SEED)),
+])
+ 
+print("Training RandomForestRegressor...")
+model.fit(X_train, y_train)
