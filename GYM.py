@@ -72,7 +72,6 @@ def simulate_dataset(n_samples_per_muscle=300):
 print("Simulating training dataset...")
 df = simulate_dataset(n_samples_per_muscle=300)
 print(f"Dataset shape: {df.shape}")
-print(df.head())
 print()
 
 feature_cols = ["muscle_group", "weekly_training_time_min", "sessions_per_week",
@@ -96,3 +95,51 @@ model = Pipeline(steps=[
  
 print("Training RandomForestRegressor...")
 model.fit(X_train, y_train)
+
+
+print("Training RandomForestRegressor...")
+model.fit(X_train, y_train)
+ 
+y_pred = model.predict(X_test)
+r2 = r2_score(y_test, y_pred)
+mae = mean_absolute_error(y_test, y_pred)
+print(f"\nModel performance on held-out test set:")
+print(f"  R^2  = {r2:.3f}")
+print(f"  MAE  = {mae:.3f} percentage points of growth")
+ 
+ohe_feature_names = model.named_steps["preprocess"].named_transformers_["muscle_ohe"].get_feature_names_out(["muscle_group"])
+all_feature_names = list(ohe_feature_names) + [c for c in feature_cols if c != "muscle_group"]
+importances = model.named_steps["regressor"].feature_importances_
+importance_df = pd.DataFrame({"feature": all_feature_names, "importance": importances}) \
+                   .sort_values("importance", ascending=False)
+print("\nFeature importances:")
+print(importance_df.to_string(index=False))
+ 
+plt.figure(figsize=(10, 6.5))
+time_range = np.linspace(10, 200, 100)
+ 
+for muscle in MUSCLES:
+    query_df = pd.DataFrame({
+        "muscle_group": muscle,
+        "weekly_training_time_min": time_range,
+        "sessions_per_week": 3,             
+        "avg_intensity_pct_1rm": 75,          
+        "training_age_years": 2,              
+    })
+    predicted_growth = model.predict(query_df)
+    plt.plot(time_range, predicted_growth, label=muscle, linewidth=2)
+ 
+plt.xlabel("Weekly Training Time for Muscle Group (minutes of working sets)")
+plt.ylabel("Predicted Muscle Growth over 8 Weeks (%)")
+plt.title("Predicted Muscle Growth vs. Weekly Training Time\n(at 3 sessions/week, 75% 1RM, 2 yrs training age)")
+plt.legend(title="Muscle Group", bbox_to_anchor=(1.02, 1), loc="upper left")
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.savefig("muscle_growth_vs_time.png", dpi=150)
+print("\nSaved plot to muscle_growth_vs_time.png")
+
+ 
+df.to_csv("simulated_training_data.csv", index=False)
+joblib.dump(model, "muscle_growth_model.joblib")
+print("Saved dataset to simulated_training_data.csv")
+print("Saved trained model to muscle_growth_model.joblib")
