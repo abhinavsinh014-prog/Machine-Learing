@@ -26,4 +26,19 @@ MUSCLE_PARAMS = {
  
 MUSCLES = list(MUSCLE_PARAMS.keys())
 
-print(MUSCLES)
+def true_growth_function(muscle, weekly_time, sessions_per_week, intensity_pct, training_age):
+    
+    p = MUSCLE_PARAMS[muscle]
+ 
+    base_growth = p["Gmax"] * (1 - np.exp(-p["k"] * weekly_time))
+ 
+    excess = np.maximum(0, weekly_time - p["mrv_time"])
+    overtraining_penalty = p["recovery_penalty"] * excess
+ 
+    freq_factor = 1 + 0.08 * np.minimum(sessions_per_week, 4) - 0.02 * np.maximum(0, sessions_per_week - 4)
+    intensity_factor = 1 - 0.0009 * (intensity_pct - 75) ** 2 / 10
+ 
+    age_factor = 1.35 / (1 + 0.15 * training_age)
+ 
+    growth = (base_growth - overtraining_penalty) * freq_factor * intensity_factor * age_factor
+    return np.maximum(growth, 0)
