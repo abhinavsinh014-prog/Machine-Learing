@@ -7,8 +7,7 @@ from sklearn.metrics import r2_score, mean_absolute_error
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-import joblib
-
+import streamlit as st
 
 RANDOM_SEED = 42
 rng = np.random.default_rng(RANDOM_SEED)
@@ -140,13 +139,13 @@ print("\nSaved plot to muscle_growth_vs_time.png")
 
 
 
-my_input = pd.DataFrame({
-    "muscle_group": ["Chest"],               
-    "weekly_training_time_min": [60],         
-    "sessions_per_week": [3],
-    "avg_intensity_pct_1rm": [75],
-    "training_age_years": [2],
-})
+# my_input = pd.DataFrame({
+#     "muscle_group": ["Chest"],               
+#     "weekly_training_time_min": [60],         
+#     "sessions_per_week": [3],
+#     "avg_intensity_pct_1rm": [75],
+#     "training_age_years": [2],
+# })
 
-predicted_growth = model.predict(my_input)
-print(f"Predicted growth: {predicted_growth[0]:.2f}%")
+# predicted_growth = model.predict(my_input)
+# print(f"Predicted growth: {predicted_growth[0]:.2f}%")
