@@ -95,13 +95,22 @@ model = Pipeline(steps=[
 print("Training RandomForestRegressor...")
 model.fit(X_train, y_train)
 
+r2 = r2_score(y_test, model.predict(X_test))
+mae = mean_absolute_error(y_test, model.predict(X_test))
 
-print("Training RandomForestRegressor...")
-model.fit(X_train, y_train)
- 
-y_pred = model.predict(X_test)
-r2 = r2_score(y_test, y_pred)
-mae = mean_absolute_error(y_test, y_pred)
+
+st.title("Muscle Growth Prediction App")
+
+my_input = pd.DataFrame({
+    "muscle_group": [st.selectbox("Select muscle group:", ["Chest", "Back", "Legs", "Shoulders"])],
+    "weekly_training_time_min": [st.number_input("Weekly training time (minutes):", min_value=10, max_value=200, value=60)],
+    "sessions_per_week": [st.number_input("Sessions per week:", min_value=1, max_value=10, value=3)],
+    "avg_intensity_pct_1rm": [st.slider("Average intensity (% 1RM):", min_value=50, max_value=90, value=75)],
+    "training_age_years": [st.slider("Training age (years):", min_value=0, max_value=20, value=2)],
+})
+
+predicted_growth = model.predict(my_input)
+st.write(f"Predicted growth: {predicted_growth[0]:.2f}%")
 print(f"\nModel performance on held-out test set:")
 print(f"  R^2  = {r2:.3f}")
 print(f"  MAE  = {mae:.3f} percentage points of growth")
@@ -138,6 +147,7 @@ plt.savefig("muscle_growth_vs_time.png", dpi=150)
 print("\nSaved plot to muscle_growth_vs_time.png")
 
 
+st.title("Muscle Growth Prediction App")
 
 my_input = pd.DataFrame({
     "muscle_group": [st.selectbox("Select muscle group:", ["Chest", "Back", "Legs", "Shoulders"])],
