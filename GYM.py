@@ -99,14 +99,29 @@ r2 = r2_score(y_test, model.predict(X_test))
 mae = mean_absolute_error(y_test, model.predict(X_test))
 
 
+class selectbox:
+    """Reusable select-box control for selecting a supported muscle group."""
+
+    def __init__(self, label, options, key=None):
+        self.label = label
+        self.options = list(options)
+        self.key = key
+        if not self.options:
+            raise ValueError("options must contain at least one value")
+
+    def render(self):
+        """Render the control and return the selected option."""
+        return st.selectbox(self.label, self.options, key=self.key)
+
+
 st.title("Muscle Growth Prediction App")
 
 my_input = pd.DataFrame({
-    "muscle_group": [st.selectbox("Select muscle group:", ["Chest", "Back", "Legs", "Shoulders"])],
-    "weekly_training_time_min": [st.number_input("Weekly training time (minutes):", min_value=10, max_value=200, value=60)],
-    "sessions_per_week": [st.number_input("Sessions per week:", min_value=1, max_value=10, value=3)],
-    "avg_intensity_pct_1rm": [st.slider("Average intensity (% 1RM):", min_value=50, max_value=90, value=75)],
-    "training_age_years": [st.slider("Training age (years):", min_value=0, max_value=20, value=2)],
+    "muscle_group": [selectbox("Select muscle group:", MUSCLES, key="muscle_group").render()],
+    "weekly_training_time_min": [st.number_input("Weekly training time (minutes):", min_value=10, max_value=200, value=60, key="weekly_training_time")],
+    "sessions_per_week": [st.number_input("Sessions per week:", min_value=1, max_value=10, value=3, key="sessions_per_week")],
+    "avg_intensity_pct_1rm": [st.slider("Average intensity (% 1RM):", min_value=50, max_value=90, value=75, key="avg_intensity")],
+    "training_age_years": [st.slider("Training age (years):", min_value=0, max_value=20, value=2, key="training_age")],
 })
 
 predicted_growth = model.predict(my_input)
@@ -150,11 +165,19 @@ print("\nSaved plot to muscle_growth_vs_time.png")
 st.title("Muscle Growth Prediction App")
 
 my_input = pd.DataFrame({
-    "muscle_group": [st.selectbox("Select muscle group:", ["Chest", "Back", "Legs", "Shoulders"])],
-    "weekly_training_time_min": [st.number_input("Weekly training time (minutes):", min_value=10, max_value=200, value=60)],
-    "sessions_per_week": [st.number_input("Sessions per week:", min_value=1, max_value=10, value=3)],
-    "avg_intensity_pct_1rm": [st.slider("Average intensity (% 1RM):", min_value=50, max_value=90, value=75)],
-    "training_age_years": [st.slider("Training age (years):", min_value=0, max_value=20, value=2)],
+    "muscle_group": [selectbox("Select muscle group:", MUSCLES, key="muscle_group_duplicate").render()],
+    "weekly_training_time_min": [
+    st.number_input(
+        "Weekly training time (minutes):",
+        min_value=10,
+        max_value=200,
+        value=60,
+        key="weekly_training_time"
+    )
+],
+    "sessions_per_week": [st.number_input("Sessions per week:", min_value=1, max_value=10, value=3, key="sessions_per_week")],
+    "avg_intensity_pct_1rm": [st.slider("Average intensity (% 1RM):", min_value=50, max_value=90, value=75, key="avg_intensity")],
+    "training_age_years": [st.slider("Training age (years):", min_value=0, max_value=20, value=2, key="training_age")],
 })
 
 predicted_growth = model.predict(my_input)
