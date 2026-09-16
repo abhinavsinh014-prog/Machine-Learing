@@ -148,4 +148,4 @@ my_input = pd.DataFrame({
 })
 
 predicted_growth = model.predict(my_input)
-print(f"Predicted growth: {predicted_growth[0]:.2f}%")
+st.write(f"Predicted growth: {predicted_growth[0]:.2f}%")
