@@ -588,4 +588,104 @@ else:
         "💪 Your training time is below the simulated recovery threshold."
     )
 
+if sessions > 5:
+
+    recommendations.append(
+        "🔄 High training frequency may increase recovery demands."
+    )
+
+
+if recovery < 6:
+
+    recommendations.append(
+        "🛌 Your recovery score is low. Consider reducing training stress "
+        "if fatigue is accumulating."
+    )
+
+
+for recommendation in recommendations:
+
+    st.info(recommendation)
+
+st.subheader("📈 Growth vs Weekly Training Time")
+
+time_range = np.linspace(
+    10,
+    220,
+    100
+)
+
+curve_df = pd.DataFrame({
+
+    "muscle_group": [muscle] * 100,
+
+    "weekly_training_time_min":
+        time_range,
+
+    "sessions_per_week":
+        [sessions] * 100,
+
+    "avg_intensity_pct_1rm":
+        [intensity] * 100,
+
+    "training_age_years":
+        [training_age] * 100,
+
+    "body_weight_kg":
+        [body_weight] * 100,
+
+    "daily_calories":
+        [calories] * 100,
+
+    "daily_protein_g":
+        [protein] * 100,
+
+    "sleep_hours":
+        [sleep] * 100,
+
+    "recovery_score":
+        [recovery] * 100
+})
+
+
+curve_prediction = model.predict(
+    curve_df
+)
+
+
+fig, ax = plt.subplots(
+    figsize=(10, 5)
+)
+
+ax.plot(
+    time_range,
+    curve_prediction,
+    linewidth=2
+)
+
+ax.axvline(
+    MUSCLE_PARAMS[muscle]["mrv_time"],
+    linestyle="--",
+    label="Simulated Recovery Threshold"
+)
+
+ax.set_xlabel(
+    "Weekly Training Time (minutes)"
+)
+
+ax.set_ylabel(
+    "Predicted 8-Week Growth (%)"
+)
+
+ax.set_title(
+    f"{muscle}: Training Time vs Simulated Growth"
+)
+
+ax.grid(
+    alpha=0.3
+)
+
+ax.legend()
+
+st.pyplot(fig)
 
