@@ -534,3 +534,58 @@ with col4:
 
 st.subheader("🧠 AI Analysis")
 
+recommendations = []
+
+
+if protein_per_kg < 1.2:
+
+    recommendations.append(
+        "🍗 Your protein intake is relatively low for a muscle-building simulation."
+    )
+
+elif protein_per_kg >= 1.6:
+
+    recommendations.append(
+        "🍗 Your protein intake is within a high-protein range."
+    )
+
+else:
+
+    recommendations.append(
+        "🍗 Your protein intake is moderate."
+    )
+
+
+if sleep < 7:
+
+    recommendations.append(
+        "😴 Sleep is below 7 hours. Recovery may be an important limitation."
+    )
+
+elif sleep >= 8:
+
+    recommendations.append(
+        "😴 Your sleep input indicates strong recovery conditions."
+    )
+
+else:
+
+    recommendations.append(
+        "😴 Your sleep input is around the commonly recommended range."
+    )
+
+
+if weekly_time > MUSCLE_PARAMS[muscle]["mrv_time"]:
+
+    recommendations.append(
+        "⚠️ Your simulated weekly training time is above this muscle's "
+        "configured recovery threshold."
+    )
+
+else:
+
+    recommendations.append(
+        "💪 Your training time is below the simulated recovery threshold."
+    )
+
+
