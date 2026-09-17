@@ -1,20 +1,20 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import streamlit as st
+
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_absolute_error
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-import streamlit as st
 
 st.set_page_config(
     page_title="AI Muscle Growth Predictor",
     page_icon="💪",
     layout="wide"
 )
-
 
 RANDOM_SEED = 42
 
@@ -88,128 +88,449 @@ MUSCLE_PARAMS = {
     }
 }
 
+def calculate_growth(
+    muscle,
+    weekly_time,
+    sessions,
+    intensity,
+    training_age,
+    calories,
+    protein,
+    body_weight,
+    sleep,
+    recovery
+):
 
-def true_growth_function(muscle, weekly_time, sessions_per_week, intensity_pct, training_age):
-    
     p = MUSCLE_PARAMS[muscle]
- 
-    base_growth = p["Gmax"] * (1 - np.exp(-p["k"] * weekly_time))
- 
-    excess = np.maximum(0, weekly_time - p["mrv_time"])
-    overtraining_penalty = p["recovery_penalty"] * excess
- 
-    freq_factor = 1 + 0.08 * np.minimum(sessions_per_week, 4) - 0.02 * np.maximum(0, sessions_per_week - 4)
-    intensity_factor = 1 - 0.0009 * (intensity_pct - 75) ** 2 / 10
- 
-    age_factor = 1.35 / (1 + 0.15 * training_age)
- 
-    growth = (base_growth - overtraining_penalty) * freq_factor * intensity_factor * age_factor
+
+    base_growth = p["Gmax"] * (
+        1 - np.exp(-p["k"] * weekly_time)
+    )
+
+    excess_volume = np.maximum(
+        0,
+        weekly_time - p["mrv_time"]
+    )
+
+    volume_penalty = (
+        p["recovery_penalty"] * excess_volume
+    )
+
+    frequency_factor = (
+        1
+        + 0.08 * np.minimum(sessions, 4)
+        - 0.02 * np.maximum(0, sessions - 4)
+    )
+
+    intensity_factor = (
+        1
+        - 0.0009 * (intensity - 75) ** 2 / 10
+    )
+
+    experience_factor = (
+        1.35 / (1 + 0.15 * training_age)
+    )
+
+    protein_per_kg = protein / max(body_weight, 1)
+
+    protein_factor = np.clip(
+        0.75 + 0.25 * (protein_per_kg / 1.6),
+        0.70,
+        1.05
+    )
+
+    calorie_factor = np.clip(
+        0.85 + 0.15 * ((calories - 1800) / 1000),
+        0.80,
+        1.05
+    )
+
+    sleep_factor = np.clip(
+        0.70 + 0.05 * sleep,
+        0.70,
+        1.05
+    )
+
+    recovery_factor = np.clip(
+        recovery / 10,
+        0.50,
+        1.00
+    )
+
+    growth = (
+        (base_growth - volume_penalty)
+        * frequency_factor
+        * intensity_factor
+        * experience_factor
+        * protein_factor
+        * calorie_factor
+        * sleep_factor
+        * recovery_factor
+    )
+
     return np.maximum(growth, 0)
 
-def simulate_dataset(n_samples_per_muscle=300):
+
+# ============================================================
+# DATASET GENERATOR
+# ============================================================
+
+@st.cache_data
+def generate_dataset(samples_per_muscle=1000):
+
+    rng = np.random.default_rng(RANDOM_SEED)
+
     rows = []
+
     for muscle in MUSCLES:
-        weekly_time = rng.uniform(10, 200, n_samples_per_muscle)
-        sessions = rng.integers(1, 6, n_samples_per_muscle)      
-        intensity = rng.uniform(55, 95, n_samples_per_muscle)     
-        training_age = rng.uniform(0, 15, n_samples_per_muscle)        
- 
-        expected_growth = true_growth_function(muscle, weekly_time, sessions, intensity, training_age)
- 
-        noise = rng.normal(0, 0.15 * expected_growth + 0.15, n_samples_per_muscle)
-        observed_growth = np.maximum(expected_growth + noise, 0)
- 
-        for i in range(n_samples_per_muscle):
+
+        for _ in range(samples_per_muscle):
+
+            weekly_time = rng.uniform(10, 220)
+
+            sessions = rng.integers(1, 7)
+
+            intensity = rng.uniform(55, 95)
+
+            training_age = rng.uniform(0, 15)
+
+            body_weight = rng.uniform(45, 120)
+
+            protein_per_kg = rng.uniform(0.7, 2.5)
+
+            protein = body_weight * protein_per_kg
+
+            calories = rng.uniform(1600, 3800)
+
+            sleep = rng.uniform(4.5, 10)
+
+            recovery = rng.uniform(4, 10)
+
+            expected_growth = calculate_growth(
+                muscle=muscle,
+                weekly_time=weekly_time,
+                sessions=sessions,
+                intensity=intensity,
+                training_age=training_age,
+                calories=calories,
+                protein=protein,
+                body_weight=body_weight,
+                sleep=sleep,
+                recovery=recovery
+            )
+
+            # Realistic random variation
+            noise = rng.normal(
+                0,
+                0.12 * expected_growth + 0.12
+            )
+
+            observed_growth = max(
+                expected_growth + noise,
+                0
+            )
+
             rows.append({
                 "muscle_group": muscle,
-                "weekly_training_time_min": round(weekly_time[i], 1),
-                "sessions_per_week": int(sessions[i]),
-                "avg_intensity_pct_1rm": round(intensity[i], 1),
-                "training_age_years": round(training_age[i], 1),
-                "muscle_growth_pct_8wk": round(observed_growth[i], 3),
+                "weekly_training_time_min": round(
+                    weekly_time, 1
+                ),
+                "sessions_per_week": int(sessions),
+                "avg_intensity_pct_1rm": round(
+                    intensity, 1
+                ),
+                "training_age_years": round(
+                    training_age, 1
+                ),
+                "body_weight_kg": round(
+                    body_weight, 1
+                ),
+                "daily_calories": round(
+                    calories
+                ),
+                "daily_protein_g": round(
+                    protein, 1
+                ),
+                "sleep_hours": round(
+                    sleep, 1
+                ),
+                "recovery_score": round(
+                    recovery, 1
+                ),
+                "muscle_growth_pct_8wk": round(
+                    observed_growth, 3
+                )
             })
- 
+
     return pd.DataFrame(rows)
 
- 
-print("Simulating training dataset...")
-df = simulate_dataset(n_samples_per_muscle=300)
-print(f"Dataset shape: {df.shape}")
-print()
+df = generate_dataset()
 
-feature_cols = ["muscle_group", "weekly_training_time_min", "sessions_per_week",
-                 "avg_intensity_pct_1rm", "training_age_years"]
+feature_cols = [
+    "muscle_group",
+    "weekly_training_time_min",
+    "sessions_per_week",
+    "avg_intensity_pct_1rm",
+    "training_age_years",
+    "body_weight_kg",
+    "daily_calories",
+    "daily_protein_g",
+    "sleep_hours",
+    "recovery_score"
+]
+
 target_col = "muscle_growth_pct_8wk"
- 
+
+
 X = df[feature_cols]
 y = df[target_col]
- 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=RANDOM_SEED)
- 
-preprocessor = ColumnTransformer(
-    transformers=[("muscle_ohe", OneHotEncoder(handle_unknown="ignore"), ["muscle_group"])],
-    remainder="passthrough",
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=RANDOM_SEED
 )
- 
-model = Pipeline(steps=[
-    ("preprocess", preprocessor),
-    ("regressor", RandomForestRegressor(n_estimators=300, max_depth=10, random_state=RANDOM_SEED)),
-])
- 
-print("Training RandomForestRegressor...")
-model.fit(X_train, y_train)
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        (
+            "muscle",
+            OneHotEncoder(handle_unknown="ignore"),
+            ["muscle_group"]
+        )
+    ],
+    remainder="passthrough"
+)
+
+@st.cache_resource
+def train_model(X_train, y_train):
+
+    model = Pipeline(
+        steps=[
+            (
+                "preprocess",
+                preprocessor
+            ),
+
+            (
+                "regressor",
+                RandomForestRegressor(
+                    n_estimators=400,
+                    max_depth=14,
+                    min_samples_leaf=2,
+                    random_state=RANDOM_SEED,
+                    n_jobs=-1
+                )
+            )
+        ]
+    )
+
+    model.fit(X_train, y_train)
+
+    return model
 
 
-print("Training RandomForestRegressor...")
-model.fit(X_train, y_train)
- 
+model = train_model(
+    X_train,
+    y_train
+)
 y_pred = model.predict(X_test)
-r2 = r2_score(y_test, y_pred)
-mae = mean_absolute_error(y_test, y_pred)
-print(f"\nModel performance on held-out test set:")
-print(f"  R^2  = {r2:.3f}")
-print(f"  MAE  = {mae:.3f} percentage points of growth")
- 
-ohe_feature_names = model.named_steps["preprocess"].named_transformers_["muscle_ohe"].get_feature_names_out(["muscle_group"])
-all_feature_names = list(ohe_feature_names) + [c for c in feature_cols if c != "muscle_group"]
-importances = model.named_steps["regressor"].feature_importances_
-importance_df = pd.DataFrame({"feature": all_feature_names, "importance": importances}) \
-                   .sort_values("importance", ascending=False)
-print("\nFeature importances:")
-print(importance_df.to_string(index=False))
- 
-plt.figure(figsize=(10, 6.5))
-time_range = np.linspace(10, 200, 100)
- 
-for muscle in MUSCLES:
-    query_df = pd.DataFrame({
-        "muscle_group": muscle,
-        "weekly_training_time_min": time_range,
-        "sessions_per_week": 3,             
-        "avg_intensity_pct_1rm": 75,          
-        "training_age_years": 2,              
-    })
-    predicted_growth = model.predict(query_df)
-    plt.plot(time_range, predicted_growth, label=muscle, linewidth=2)
- 
-plt.xlabel("Weekly Training Time for Muscle Group (minutes of working sets)")
-plt.ylabel("Predicted Muscle Growth over 8 Weeks (%)")
-plt.title("Predicted Muscle Growth vs. Weekly Training Time\n(at 3 sessions/week, 75% 1RM, 2 yrs training age)")
-plt.legend(title="Muscle Group", bbox_to_anchor=(1.02, 1), loc="upper left")
-plt.grid(alpha=0.3)
-plt.tight_layout()
-plt.savefig("muscle_growth_vs_time.png", dpi=150)
-print("\nSaved plot to muscle_growth_vs_time.png")
+
+r2 = r2_score(
+    y_test,
+    y_pred
+)
+
+mae = mean_absolute_error(
+    y_test,
+    y_pred
+)
 
 
+st.title("💪 AI Muscle Growth Predictor")
 
-my_input = pd.DataFrame({
-    "muscle_group": [st.selectbox("Select Muscle Group",["Biceps", "Triceps", "Shoulders", "Chest", "Back", "Quads", "Hamstrings", "Calves"])],               
-    "weekly_training_time_min": [st.slider("Weekly Training Time (minutes)", 10, 200, 60)],         
-    "sessions_per_week": [st.slider("Sessions per Week", 1, 6, 3)],
-    "avg_intensity_pct_1rm": [st.slider("Average Intensity (% 1RM)", 50, 90, 75)],
-    "training_age_years": [st.slider("Training Age (years)", 0, 20, 2)],
+st.markdown(
+    """
+### Personalized training & recovery analysis
+
+Adjust your training, nutrition and recovery variables
+to generate an **educational 8-week muscle-growth simulation**.
+"""
+)
+
+st.sidebar.header("🏋️ Training")
+
+muscle = st.sidebar.selectbox(
+    "Muscle Group",
+    MUSCLES,
+    key="muscle_selector"
+)
+
+weekly_time = st.sidebar.slider(
+    "Weekly Training Time (min)",
+    10,
+    220,
+    60,
+    5,
+    key="weekly_training_time"
+)
+
+sessions = st.sidebar.slider(
+    "Sessions Per Week",
+    1,
+    6,
+    3,
+    key="sessions_per_week"
+)
+
+intensity = st.sidebar.slider(
+    "Average Intensity (% 1RM)",
+    55,
+    95,
+    75,
+    key="intensity"
+)
+
+training_age = st.sidebar.slider(
+    "Training Age (years)",
+    0.0,
+    15.0,
+    2.0,
+    0.5,
+    key="training_age"
+)
+
+st.sidebar.header("🍗 Nutrition")
+
+body_weight = st.sidebar.number_input(
+    "Body Weight (kg)",
+    min_value=35.0,
+    max_value=180.0,
+    value=62.0,
+    step=0.5,
+    key="body_weight"
+)
+
+calories = st.sidebar.number_input(
+    "Daily Calories",
+    min_value=1200,
+    max_value=6000,
+    value=2500,
+    step=50,
+    key="daily_calories"
+)
+
+protein = st.sidebar.number_input(
+    "Daily Protein (g)",
+    min_value=30.0,
+    max_value=350.0,
+    value=120.0,
+    step=5.0,
+    key="daily_protein"
+)
+
+st.sidebar.header("😴 Recovery")
+
+sleep = st.sidebar.slider(
+    "Average Sleep (hours)",
+    4.0,
+    10.0,
+    7.0,
+    0.5,
+    key="sleep"
+)
+
+recovery = st.sidebar.slider(
+    "Recovery Score",
+    1.0,
+    10.0,
+    8.0,
+    0.5,
+    key="recovery"
+)
+
+user_input = pd.DataFrame({
+
+    "muscle_group": [muscle],
+
+    "weekly_training_time_min": [
+        weekly_time
+    ],
+
+    "sessions_per_week": [
+        sessions
+    ],
+
+    "avg_intensity_pct_1rm": [
+        intensity
+    ],
+
+    "training_age_years": [
+        training_age
+    ],
+
+    "body_weight_kg": [
+        body_weight
+    ],
+
+    "daily_calories": [
+        calories
+    ],
+
+    "daily_protein_g": [
+        protein
+    ],
+
+    "sleep_hours": [
+        sleep
+    ],
+
+    "recovery_score": [
+        recovery
+    ]
 })
 
-predicted_growth = model.predict(my_input)
-st.write(f"Predicted growth: {predicted_growth[0]:.2f}%")-
+prediction = model.predict(
+    user_input
+)[0]
+
+
+protein_per_kg = protein / body_weight
+
+
+st.subheader("🎯 Your Prediction")
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+
+    st.metric(
+        "Predicted 8-Week Growth",
+        f"{prediction:.2f}%"
+    )
+
+with col2:
+
+    st.metric(
+        "Protein / kg",
+        f"{protein_per_kg:.2f} g"
+    )
+
+with col3:
+
+    st.metric(
+        "Training Time",
+        f"{weekly_time} min"
+    )
+
+with col4:
+
+    st.metric(
+        "Sleep",
+        f"{sleep:.1f} h"
+    )
+
+
+st.subheader("🧠 AI Analysis")
+
