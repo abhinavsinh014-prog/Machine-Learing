@@ -689,3 +689,48 @@ ax.legend()
 
 st.pyplot(fig)
 
+st.subheader("🔍 What Influenced the Model?")
+
+ohe = model.named_steps[
+    "preprocess"
+].named_transformers_["muscle"]
+
+
+ohe_names = list(
+    ohe.get_feature_names_out(
+        ["muscle_group"]
+    )
+)
+
+
+numeric_features = [
+    c for c in feature_cols
+    if c != "muscle_group"
+]
+
+
+all_features = (
+    ohe_names +
+    numeric_features
+)
+
+
+importances = (
+    model.named_steps[
+        "regressor"
+    ].feature_importances_
+)
+
+
+importance_df = pd.DataFrame({
+
+    "Feature": all_features,
+
+    "Importance": importances
+
+}).sort_values(
+    "Importance",
+    ascending=False
+)
+
+
