@@ -757,3 +757,40 @@ st.subheader("🤖 Model Performance")
 
 metric1, metric2 = st.columns(2)
 
+with metric1:
+
+    st.metric(
+        "R² Score",
+        f"{r2:.3f}"
+    )
+
+with metric2:
+
+    st.metric(
+        "Mean Absolute Error",
+        f"{mae:.3f}"
+    )
+
+
+st.caption(
+    f"Dataset contains {len(df):,} simulated observations."
+)
+
+with st.expander("📊 View Dataset"):
+
+    st.dataframe(
+        df.head(100),
+        use_container_width=True
+    )
+
+csv = df.to_csv(
+    index=False
+).encode("utf-8")
+
+
+st.download_button(
+    label="⬇️ Download Training Dataset",
+    data=csv,
+    file_name="muscle_growth_dataset.csv",
+    mime="text/csv"
+)
