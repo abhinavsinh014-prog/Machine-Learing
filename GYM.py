@@ -732,5 +732,28 @@ importance_df = pd.DataFrame({
     "Importance",
     ascending=False
 )
+fig2, ax2 = plt.subplots(
+    figsize=(10, 6)
+)
 
+top_features = importance_df.head(10)
+
+ax2.barh(
+    top_features["Feature"][::-1],
+    top_features["Importance"][::-1]
+)
+
+ax2.set_xlabel(
+    "Importance"
+)
+
+ax2.set_title(
+    "Top Model Features"
+)
+
+st.pyplot(fig2)
+
+st.subheader("🤖 Model Performance")
+
+metric1, metric2 = st.columns(2)
 
