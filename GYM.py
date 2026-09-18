@@ -503,3 +503,50 @@ with col2:
 # RECOVERY
 # ============================================================
 
+st.header("😴 Recovery")
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    sleep = st.slider(
+        "Average sleep per night (hours)",
+        min_value=3.0,
+        max_value=12.0,
+        value=7.0,
+        step=0.5,
+        key="user_sleep"
+    )
+
+
+with col2:
+
+    recovery = st.slider(
+        "How would you rate your recovery?",
+        min_value=1.0,
+        max_value=10.0,
+        value=7.0,
+        step=0.5,
+        key="user_recovery"
+    )
+
+    st.caption(
+        "1 = very poor recovery | 10 = excellent recovery"
+    )
+
+
+# ============================================================
+# CALCULATIONS
+# ============================================================
+
+protein_per_kg = protein / body_weight
+
+bmi = body_weight / (
+    (height / 100) ** 2
+)
+
+
+# ============================================================
+# PREDICT BUTTON
+# ============================================================
+
