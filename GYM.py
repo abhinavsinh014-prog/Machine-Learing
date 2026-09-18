@@ -545,8 +545,105 @@ bmi = body_weight / (
     (height / 100) ** 2
 )
 
+st.divider()
+
+predict_button = st.button(
+    "🚀 Predict My Muscle Growth",
+    type="primary",
+    use_container_width=True
+)
+
 
 # ============================================================
-# PREDICT BUTTON
+# PREDICTION
 # ============================================================
+
+if predict_button:
+
+    user_data = pd.DataFrame({
+
+        "muscle_group": [muscle],
+
+        "weekly_training_time_min": [
+            weekly_time
+        ],
+
+        "sessions_per_week": [
+            sessions
+        ],
+
+        "avg_intensity_pct_1rm": [
+            intensity
+        ],
+
+        "training_age_years": [
+            training_age
+        ],
+
+        "body_weight_kg": [
+            body_weight
+        ],
+
+        "daily_calories": [
+            calories
+        ],
+
+        "daily_protein_g": [
+            protein
+        ],
+
+        "sleep_hours": [
+            sleep
+        ],
+
+        "recovery_score": [
+            recovery
+        ]
+    })
+
+
+    predicted_growth = model.predict(
+        user_data
+    )[0]
+
+
+    # ========================================================
+    # RESULT
+    # ========================================================
+
+    st.success(
+        "Prediction generated successfully!"
+    )
+
+    st.header("🎯 Your Result")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+
+        st.metric(
+            "Predicted Growth",
+            f"{predicted_growth:.2f}%"
+        )
+
+    with col2:
+
+        st.metric(
+            "Protein / kg",
+            f"{protein_per_kg:.2f} g"
+        )
+
+    with col3:
+
+        st.metric(
+            "BMI",
+            f"{bmi:.1f}"
+        )
+
+    with col4:
+
+        st.metric(
+            "Training Frequency",
+            f"{sessions}× / week"
+        )
 
