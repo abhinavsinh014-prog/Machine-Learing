@@ -798,3 +798,82 @@ if predict_button:
 
     st.pyplot(fig)
 
+
+    # ========================================================
+    # USER INPUT SUMMARY
+    # ========================================================
+
+    st.header("📋 Your Input")
+
+    input_summary = pd.DataFrame({
+
+        "Parameter": [
+            "Age",
+            "Height",
+            "Weight",
+            "Muscle",
+            "Weekly Training Time",
+            "Sessions",
+            "Intensity",
+            "Training Age",
+            "Calories",
+            "Protein",
+            "Protein / kg",
+            "Sleep",
+            "Recovery"
+        ],
+
+        "Value": [
+            f"{age} years",
+            f"{height} cm",
+            f"{body_weight} kg",
+            muscle,
+            f"{weekly_time} min",
+            f"{sessions}× / week",
+            f"{intensity}% 1RM",
+            f"{training_age} years",
+            f"{calories} kcal",
+            f"{protein} g",
+            f"{protein_per_kg:.2f} g/kg",
+            f"{sleep} hours",
+            f"{recovery}/10"
+        ]
+    })
+
+    st.dataframe(
+        input_summary,
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+# ============================================================
+# MODEL INFORMATION
+# ============================================================
+
+with st.expander("🤖 About the ML Model"):
+
+    st.write(
+        "This application uses a Random Forest Regressor "
+        "trained on a synthetically generated dataset."
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric(
+            "Training Samples",
+            f"{len(X_train):,}"
+        )
+
+    with col2:
+        st.metric(
+            "R²",
+            f"{r2:.3f}"
+        )
+
+    with col3:
+        st.metric(
+            "MAE",
+            f"{mae:.3f}"
+        )
