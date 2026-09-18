@@ -10,11 +10,21 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 
+
+# ============================================================
+# PAGE CONFIG
+# ============================================================
+
 st.set_page_config(
     page_title="AI Muscle Growth Predictor",
     page_icon="💪",
     layout="wide"
 )
+
+
+# ============================================================
+# CONSTANTS
+# ============================================================
 
 RANDOM_SEED = 42
 
@@ -37,49 +47,42 @@ MUSCLE_PARAMS = {
         "mrv_time": 70,
         "recovery_penalty": 0.020
     },
-
     "Triceps": {
         "Gmax": 6.5,
         "k": 0.040,
         "mrv_time": 75,
         "recovery_penalty": 0.018
     },
-
     "Shoulders": {
         "Gmax": 7.0,
         "k": 0.030,
         "mrv_time": 90,
         "recovery_penalty": 0.015
     },
-
     "Chest": {
         "Gmax": 8.0,
         "k": 0.026,
         "mrv_time": 100,
         "recovery_penalty": 0.014
     },
-
     "Back": {
         "Gmax": 9.0,
         "k": 0.020,
         "mrv_time": 130,
         "recovery_penalty": 0.010
     },
-
     "Quads": {
         "Gmax": 10.0,
         "k": 0.017,
         "mrv_time": 150,
         "recovery_penalty": 0.009
     },
-
     "Hamstrings": {
         "Gmax": 8.5,
         "k": 0.022,
         "mrv_time": 110,
         "recovery_penalty": 0.012
     },
-
     "Calves": {
         "Gmax": 5.0,
         "k": 0.035,
@@ -87,6 +90,11 @@ MUSCLE_PARAMS = {
         "recovery_penalty": 0.022
     }
 }
+
+
+# ============================================================
+# SYNTHETIC GROWTH FUNCTION
+# ============================================================
 
 def calculate_growth(
     muscle,
@@ -103,10 +111,12 @@ def calculate_growth(
 
     p = MUSCLE_PARAMS[muscle]
 
+    # Training stimulus
     base_growth = p["Gmax"] * (
         1 - np.exp(-p["k"] * weekly_time)
     )
 
+    # Excess training volume
     excess_volume = np.maximum(
         0,
         weekly_time - p["mrv_time"]
@@ -116,21 +126,26 @@ def calculate_growth(
         p["recovery_penalty"] * excess_volume
     )
 
+    # Frequency
     frequency_factor = (
         1
         + 0.08 * np.minimum(sessions, 4)
         - 0.02 * np.maximum(0, sessions - 4)
     )
 
+    # Intensity
     intensity_factor = (
-        1
-        - 0.0009 * (intensity - 75) ** 2 / 10
+        1 -
+        0.0009 * (intensity - 75) ** 2 / 10
     )
 
+    # Training experience
     experience_factor = (
-        1.35 / (1 + 0.15 * training_age)
+        1.35 /
+        (1 + 0.15 * training_age)
     )
 
+    # Protein
     protein_per_kg = protein / max(body_weight, 1)
 
     protein_factor = np.clip(
@@ -139,18 +154,21 @@ def calculate_growth(
         1.05
     )
 
+    # Calories
     calorie_factor = np.clip(
         0.85 + 0.15 * ((calories - 1800) / 1000),
         0.80,
         1.05
     )
 
+    # Sleep
     sleep_factor = np.clip(
         0.70 + 0.05 * sleep,
         0.70,
         1.05
     )
 
+    # Recovery
     recovery_factor = np.clip(
         recovery / 10,
         0.50,
@@ -172,7 +190,7 @@ def calculate_growth(
 
 
 # ============================================================
-# DATASET GENERATOR
+# GENERATE TRAINING DATA
 # ============================================================
 
 @st.cache_data
@@ -206,67 +224,53 @@ def generate_dataset(samples_per_muscle=1000):
 
             recovery = rng.uniform(4, 10)
 
-            expected_growth = calculate_growth(
-                muscle=muscle,
-                weekly_time=weekly_time,
-                sessions=sessions,
-                intensity=intensity,
-                training_age=training_age,
-                calories=calories,
-                protein=protein,
-                body_weight=body_weight,
-                sleep=sleep,
-                recovery=recovery
+            growth = calculate_growth(
+                muscle,
+                weekly_time,
+                sessions,
+                intensity,
+                training_age,
+                calories,
+                protein,
+                body_weight,
+                sleep,
+                recovery
             )
 
-            # Realistic random variation
             noise = rng.normal(
                 0,
-                0.12 * expected_growth + 0.12
+                0.12 * growth + 0.12
             )
 
             observed_growth = max(
-                expected_growth + noise,
+                growth + noise,
                 0
             )
 
             rows.append({
                 "muscle_group": muscle,
-                "weekly_training_time_min": round(
-                    weekly_time, 1
-                ),
-                "sessions_per_week": int(sessions),
-                "avg_intensity_pct_1rm": round(
-                    intensity, 1
-                ),
-                "training_age_years": round(
-                    training_age, 1
-                ),
-                "body_weight_kg": round(
-                    body_weight, 1
-                ),
-                "daily_calories": round(
-                    calories
-                ),
-                "daily_protein_g": round(
-                    protein, 1
-                ),
-                "sleep_hours": round(
-                    sleep, 1
-                ),
-                "recovery_score": round(
-                    recovery, 1
-                ),
-                "muscle_growth_pct_8wk": round(
-                    observed_growth, 3
-                )
+                "weekly_training_time_min": weekly_time,
+                "sessions_per_week": sessions,
+                "avg_intensity_pct_1rm": intensity,
+                "training_age_years": training_age,
+                "body_weight_kg": body_weight,
+                "daily_calories": calories,
+                "daily_protein_g": protein,
+                "sleep_hours": sleep,
+                "recovery_score": recovery,
+                "muscle_growth_pct_8wk": observed_growth
             })
 
     return pd.DataFrame(rows)
 
+
+# ============================================================
+# TRAIN MODEL
+# ============================================================
+
 df = generate_dataset()
 
-feature_cols = [
+features = [
     "muscle_group",
     "weekly_training_time_min",
     "sessions_per_week",
@@ -279,11 +283,10 @@ feature_cols = [
     "recovery_score"
 ]
 
-target_col = "muscle_growth_pct_8wk"
+target = "muscle_growth_pct_8wk"
 
-
-X = df[feature_cols]
-y = df[target_col]
+X = df[features]
+y = df[target]
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -291,6 +294,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     test_size=0.20,
     random_state=RANDOM_SEED
 )
+
 
 preprocessor = ColumnTransformer(
     transformers=[
@@ -303,28 +307,27 @@ preprocessor = ColumnTransformer(
     remainder="passthrough"
 )
 
+
 @st.cache_resource
 def train_model(X_train, y_train):
 
-    model = Pipeline(
-        steps=[
-            (
-                "preprocess",
-                preprocessor
-            ),
+    model = Pipeline([
+        (
+            "preprocessor",
+            preprocessor
+        ),
 
-            (
-                "regressor",
-                RandomForestRegressor(
-                    n_estimators=400,
-                    max_depth=14,
-                    min_samples_leaf=2,
-                    random_state=RANDOM_SEED,
-                    n_jobs=-1
-                )
+        (
+            "random_forest",
+            RandomForestRegressor(
+                n_estimators=400,
+                max_depth=14,
+                min_samples_leaf=2,
+                random_state=RANDOM_SEED,
+                n_jobs=-1
             )
-        ]
-    )
+        )
+    ])
 
     model.fit(X_train, y_train)
 
@@ -335,462 +338,168 @@ model = train_model(
     X_train,
     y_train
 )
-y_pred = model.predict(X_test)
+
+
+# ============================================================
+# MODEL PERFORMANCE
+# ============================================================
+
+predictions = model.predict(X_test)
 
 r2 = r2_score(
     y_test,
-    y_pred
+    predictions
 )
 
 mae = mean_absolute_error(
     y_test,
-    y_pred
+    predictions
 )
 
+
+# ============================================================
+# HEADER
+# ============================================================
 
 st.title("💪 AI Muscle Growth Predictor")
 
-st.markdown(
-    """
-### Personalized training & recovery analysis
-
-Adjust your training, nutrition and recovery variables
-to generate an **educational 8-week muscle-growth simulation**.
-"""
+st.write(
+    "Enter your personal training, nutrition and recovery "
+    "information to generate an educational 8-week prediction."
 )
 
-st.sidebar.header("🏋️ Training")
-
-muscle = st.sidebar.selectbox(
-    "Muscle Group",
-    MUSCLES,
-    key="muscle_selector"
-)
-
-weekly_time = st.sidebar.slider(
-    "Weekly Training Time (min)",
-    10,
-    220,
-    60,
-    5,
-    key="weekly_training_time"
-)
-
-sessions = st.sidebar.slider(
-    "Sessions Per Week",
-    1,
-    6,
-    3,
-    key="sessions_per_week"
-)
-
-intensity = st.sidebar.slider(
-    "Average Intensity (% 1RM)",
-    55,
-    95,
-    75,
-    key="intensity"
-)
-
-training_age = st.sidebar.slider(
-    "Training Age (years)",
-    0.0,
-    15.0,
-    2.0,
-    0.5,
-    key="training_age"
-)
-
-st.sidebar.header("🍗 Nutrition")
-
-body_weight = st.sidebar.number_input(
-    "Body Weight (kg)",
-    min_value=35.0,
-    max_value=180.0,
-    value=62.0,
-    step=0.5,
-    key="body_weight"
-)
-
-calories = st.sidebar.number_input(
-    "Daily Calories",
-    min_value=1200,
-    max_value=6000,
-    value=2500,
-    step=50,
-    key="daily_calories"
-)
-
-protein = st.sidebar.number_input(
-    "Daily Protein (g)",
-    min_value=30.0,
-    max_value=350.0,
-    value=120.0,
-    step=5.0,
-    key="daily_protein"
-)
-
-st.sidebar.header("😴 Recovery")
-
-sleep = st.sidebar.slider(
-    "Average Sleep (hours)",
-    4.0,
-    10.0,
-    7.0,
-    0.5,
-    key="sleep"
-)
-
-recovery = st.sidebar.slider(
-    "Recovery Score",
-    1.0,
-    10.0,
-    8.0,
-    0.5,
-    key="recovery"
-)
-
-user_input = pd.DataFrame({
-
-    "muscle_group": [muscle],
-
-    "weekly_training_time_min": [
-        weekly_time
-    ],
-
-    "sessions_per_week": [
-        sessions
-    ],
-
-    "avg_intensity_pct_1rm": [
-        intensity
-    ],
-
-    "training_age_years": [
-        training_age
-    ],
-
-    "body_weight_kg": [
-        body_weight
-    ],
-
-    "daily_calories": [
-        calories
-    ],
-
-    "daily_protein_g": [
-        protein
-    ],
-
-    "sleep_hours": [
-        sleep
-    ],
-
-    "recovery_score": [
-        recovery
-    ]
-})
-
-prediction = model.predict(
-    user_input
-)[0]
+st.divider()
 
 
-protein_per_kg = protein / body_weight
+# ============================================================
+# USER INFORMATION
+# ============================================================
 
+st.header("👤 Your Information")
 
-st.subheader("🎯 Your Prediction")
-
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 
 with col1:
 
-    st.metric(
-        "Predicted 8-Week Growth",
-        f"{prediction:.2f}%"
+    age = st.number_input(
+        "Age",
+        min_value=15,
+        max_value=80,
+        value=20,
+        key="user_age"
     )
 
 with col2:
 
-    st.metric(
-        "Protein / kg",
-        f"{protein_per_kg:.2f} g"
+    body_weight = st.number_input(
+        "Body Weight (kg)",
+        min_value=35.0,
+        max_value=200.0,
+        value=65.0,
+        step=0.5,
+        key="user_weight"
     )
 
 with col3:
 
-    st.metric(
-        "Training Time",
-        f"{weekly_time} min"
-    )
-
-with col4:
-
-    st.metric(
-        "Sleep",
-        f"{sleep:.1f} h"
+    height = st.number_input(
+        "Height (cm)",
+        min_value=130.0,
+        max_value=220.0,
+        value=170.0,
+        step=0.5,
+        key="user_height"
     )
 
 
-st.subheader("🧠 AI Analysis")
+# ============================================================
+# TRAINING INFORMATION
+# ============================================================
 
-recommendations = []
+st.header("🏋️ Training Information")
 
+col1, col2 = st.columns(2)
 
-if protein_per_kg < 1.2:
+with col1:
 
-    recommendations.append(
-        "🍗 Your protein intake is relatively low for a muscle-building simulation."
+    muscle = st.selectbox(
+        "Which muscle do you want to analyze?",
+        MUSCLES,
+        key="user_muscle"
     )
 
-elif protein_per_kg >= 1.6:
-
-    recommendations.append(
-        "🍗 Your protein intake is within a high-protein range."
+    weekly_time = st.number_input(
+        "Weekly training time for this muscle (minutes)",
+        min_value=10,
+        max_value=300,
+        value=60,
+        step=5,
+        key="user_training_time"
     )
 
-else:
-
-    recommendations.append(
-        "🍗 Your protein intake is moderate."
-    )
-
-
-if sleep < 7:
-
-    recommendations.append(
-        "😴 Sleep is below 7 hours. Recovery may be an important limitation."
-    )
-
-elif sleep >= 8:
-
-    recommendations.append(
-        "😴 Your sleep input indicates strong recovery conditions."
-    )
-
-else:
-
-    recommendations.append(
-        "😴 Your sleep input is around the commonly recommended range."
+    sessions = st.number_input(
+        "How many times do you train this muscle per week?",
+        min_value=1,
+        max_value=7,
+        value=3,
+        step=1,
+        key="user_sessions"
     )
 
 
-if weekly_time > MUSCLE_PARAMS[muscle]["mrv_time"]:
+with col2:
 
-    recommendations.append(
-        "⚠️ Your simulated weekly training time is above this muscle's "
-        "configured recovery threshold."
+    intensity = st.slider(
+        "Average training intensity (% 1RM)",
+        min_value=50,
+        max_value=100,
+        value=75,
+        key="user_intensity"
     )
 
-else:
-
-    recommendations.append(
-        "💪 Your training time is below the simulated recovery threshold."
-    )
-
-if sessions > 5:
-
-    recommendations.append(
-        "🔄 High training frequency may increase recovery demands."
-    )
-
-
-if recovery < 6:
-
-    recommendations.append(
-        "🛌 Your recovery score is low. Consider reducing training stress "
-        "if fatigue is accumulating."
+    training_age = st.number_input(
+        "How many years have you been training?",
+        min_value=0.0,
+        max_value=30.0,
+        value=1.0,
+        step=0.5,
+        key="user_training_age"
     )
 
 
-for recommendation in recommendations:
+# ============================================================
+# NUTRITION
+# ============================================================
 
-    st.info(recommendation)
+st.header("🍗 Nutrition")
 
-st.subheader("📈 Growth vs Weekly Training Time")
+col1, col2 = st.columns(2)
 
-time_range = np.linspace(
-    10,
-    220,
-    100
-)
+with col1:
 
-curve_df = pd.DataFrame({
-
-    "muscle_group": [muscle] * 100,
-
-    "weekly_training_time_min":
-        time_range,
-
-    "sessions_per_week":
-        [sessions] * 100,
-
-    "avg_intensity_pct_1rm":
-        [intensity] * 100,
-
-    "training_age_years":
-        [training_age] * 100,
-
-    "body_weight_kg":
-        [body_weight] * 100,
-
-    "daily_calories":
-        [calories] * 100,
-
-    "daily_protein_g":
-        [protein] * 100,
-
-    "sleep_hours":
-        [sleep] * 100,
-
-    "recovery_score":
-        [recovery] * 100
-})
-
-
-curve_prediction = model.predict(
-    curve_df
-)
-
-
-fig, ax = plt.subplots(
-    figsize=(10, 5)
-)
-
-ax.plot(
-    time_range,
-    curve_prediction,
-    linewidth=2
-)
-
-ax.axvline(
-    MUSCLE_PARAMS[muscle]["mrv_time"],
-    linestyle="--",
-    label="Simulated Recovery Threshold"
-)
-
-ax.set_xlabel(
-    "Weekly Training Time (minutes)"
-)
-
-ax.set_ylabel(
-    "Predicted 8-Week Growth (%)"
-)
-
-ax.set_title(
-    f"{muscle}: Training Time vs Simulated Growth"
-)
-
-ax.grid(
-    alpha=0.3
-)
-
-ax.legend()
-
-st.pyplot(fig)
-
-st.subheader("🔍 What Influenced the Model?")
-
-ohe = model.named_steps[
-    "preprocess"
-].named_transformers_["muscle"]
-
-
-ohe_names = list(
-    ohe.get_feature_names_out(
-        ["muscle_group"]
-    )
-)
-
-
-numeric_features = [
-    c for c in feature_cols
-    if c != "muscle_group"
-]
-
-
-all_features = (
-    ohe_names +
-    numeric_features
-)
-
-
-importances = (
-    model.named_steps[
-        "regressor"
-    ].feature_importances_
-)
-
-
-importance_df = pd.DataFrame({
-
-    "Feature": all_features,
-
-    "Importance": importances
-
-}).sort_values(
-    "Importance",
-    ascending=False
-)
-fig2, ax2 = plt.subplots(
-    figsize=(10, 6)
-)
-
-top_features = importance_df.head(10)
-
-ax2.barh(
-    top_features["Feature"][::-1],
-    top_features["Importance"][::-1]
-)
-
-ax2.set_xlabel(
-    "Importance"
-)
-
-ax2.set_title(
-    "Top Model Features"
-)
-
-st.pyplot(fig2)
-
-st.subheader("🤖 Model Performance")
-
-metric1, metric2 = st.columns(2)
-
-with metric1:
-
-    st.metric(
-        "R² Score",
-        f"{r2:.3f}"
-    )
-
-with metric2:
-
-    st.metric(
-        "Mean Absolute Error",
-        f"{mae:.3f}"
+    calories = st.number_input(
+        "Average daily calories",
+        min_value=1000,
+        max_value=6000,
+        value=2500,
+        step=50,
+        key="user_calories"
     )
 
 
-st.caption(
-    f"Dataset contains {len(df):,} simulated observations."
-)
+with col2:
 
-with st.expander("📊 View Dataset"):
-
-    st.dataframe(
-        df.head(100),
-        use_container_width=True
+    protein = st.number_input(
+        "Average daily protein (grams)",
+        min_value=30.0,
+        max_value=400.0,
+        value=120.0,
+        step=5.0,
+        key="user_protein"
     )
 
-csv = df.to_csv(
-    index=False
-).encode("utf-8")
 
+# ============================================================
+# RECOVERY
+# ============================================================
 
-st.download_button(
-    label="⬇️ Download Training Dataset",
-    data=csv,
-    file_name="muscle_growth_dataset.csv",
-    mime="text/csv"
-)
