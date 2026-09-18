@@ -647,3 +647,154 @@ if predict_button:
             f"{sessions}× / week"
         )
 
+
+    st.header("🧠 Training Analysis")
+
+    if protein_per_kg < 1.2:
+
+        st.info(
+            "🍗 Your entered protein intake is relatively low "
+            "for a muscle-building scenario."
+        )
+
+    elif protein_per_kg >= 1.6:
+
+        st.success(
+            "🍗 Your entered protein intake is in a high-protein range."
+        )
+
+    else:
+
+        st.info(
+            "🍗 Your entered protein intake is moderate."
+        )
+
+
+    if sleep < 7:
+
+        st.warning(
+            "😴 Your entered sleep duration is below 7 hours."
+        )
+
+    elif sleep >= 8:
+
+        st.success(
+            "😴 Your entered sleep duration is 8+ hours."
+        )
+
+    else:
+
+        st.info(
+            "😴 Your entered sleep duration is between 7–8 hours."
+        )
+
+
+    if weekly_time > MUSCLE_PARAMS[muscle]["mrv_time"]:
+
+        st.warning(
+            f"⚠️ Your entered training time is above the "
+            f"simulated recovery threshold for {muscle}."
+        )
+
+    else:
+
+        st.success(
+            "💪 Your entered training time is below the "
+            "simulated recovery threshold."
+        )
+
+
+    if recovery < 6:
+
+        st.warning(
+            "🛌 Your recovery score is low."
+        )
+
+
+    # ========================================================
+    # GRAPH
+    # ========================================================
+
+    st.header("📈 Training Time Analysis")
+
+    time_range = np.linspace(
+        10,
+        220,
+        100
+    )
+
+    graph_data = pd.DataFrame({
+
+        "muscle_group":
+            [muscle] * 100,
+
+        "weekly_training_time_min":
+            time_range,
+
+        "sessions_per_week":
+            [sessions] * 100,
+
+        "avg_intensity_pct_1rm":
+            [intensity] * 100,
+
+        "training_age_years":
+            [training_age] * 100,
+
+        "body_weight_kg":
+            [body_weight] * 100,
+
+        "daily_calories":
+            [calories] * 100,
+
+        "daily_protein_g":
+            [protein] * 100,
+
+        "sleep_hours":
+            [sleep] * 100,
+
+        "recovery_score":
+            [recovery] * 100
+    })
+
+
+    graph_predictions = model.predict(
+        graph_data
+    )
+
+
+    fig, ax = plt.subplots(
+        figsize=(10, 5)
+    )
+
+    ax.plot(
+        time_range,
+        graph_predictions,
+        linewidth=2
+    )
+
+    ax.axvline(
+        MUSCLE_PARAMS[muscle]["mrv_time"],
+        linestyle="--",
+        label="Simulated Recovery Threshold"
+    )
+
+    ax.set_xlabel(
+        "Weekly Training Time (minutes)"
+    )
+
+    ax.set_ylabel(
+        "Predicted 8-Week Growth (%)"
+    )
+
+    ax.set_title(
+        f"{muscle} Growth Simulation"
+    )
+
+    ax.grid(
+        alpha=0.3
+    )
+
+    ax.legend()
+
+    st.pyplot(fig)
+
